@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.Message;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -23,10 +24,15 @@ public class MainActivity extends Activity {
     private TextView cur_weather = null;
     private TextView today_temp = null;
     private TextView tom_temp = null;
+    private TextView today_weather = null;
+    private TextView tom_weather = null;
     private TextView atom_weather = null;
+    private TextView atom_date = null;
     private TextView atom_temp = null;
-    private Handler handler;
-    private ProgressBar progressBar;
+    private Handler myHandler;
+    private SwipeRefreshLayout mSwipeLayout;
+    private String cur_city = "天津";
+    private MyThread myThread;
 
     class MyHandler extends Handler{
         @Override
@@ -35,6 +41,7 @@ public class MainActivity extends Activity {
             if(msg.obj != null){
                 JSONObject mJSONObject = (JSONObject)msg.obj;
                 try {
+
                     JSONArray results = mJSONObject.getJSONArray("results");
                     JSONObject result = (JSONObject)results.opt(0);
                     JSONArray weather_data = result.getJSONArray("weather_data");
@@ -44,10 +51,17 @@ public class MainActivity extends Activity {
 
                     cur_temp.setText(weather_data_tod.getString("temperature").substring(0,2)+"°");
                     cur_weather.setText(result.getString("currentCity")+"|"+weather_data_tod.getString("weather"));
+
                     today_temp.setText(weather_data_tod.getString("temperature"));
+                    today_weather.setText(weather_data_tod.getString("weather"));
+
                     tom_temp.setText(weather_data_tom.getString("temperature"));
+                    tom_weather.setText(weather_data_tom.getString("weather"));
+
+                    atom_date.setText(weather_data_atom.getString("date"));
                     atom_temp.setText(weather_data_atom.getString("temperature"));
-                    atom_weather.setText(weather_data_atom.getString("date"));
+                    atom_weather.setText(weather_data_atom.getString("weather"));
+
 
                 }
                 catch(JSONException ex)
@@ -63,13 +77,33 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        myHandler = new MyHandler();
+        mSwipeLayout = (SwipeRefreshLayout)findViewById(R.id.id_swipe);
+        mSwipeLayout.setSize(SwipeRefreshLayout.LARGE);
+        mSwipeLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                MyThread myThread = new MyThread(myHandler,MainActivity.this);
+                myThread.setMycity(cur_city);
+                myThread.run();
+            }
+        });
+        mSwipeLayout.setColorSchemeResources(android.R.color.holo_red_light);
+
+
         cur_temp = (TextView)findViewById(R.id.cur_temp);
         cur_weather = (TextView)findViewById(R.id.cur_weather);
+
         today_temp = (TextView)findViewById(R.id.today_temp);
+        today_weather = (TextView)findViewById(R.id.today_weather);
+
         tom_temp = (TextView)findViewById(R.id.tom_temp);
-        atom_weather = (TextView)findViewById(R.id.atom_weather);
+        tom_weather = (TextView)findViewById(R.id.tom_weather);
+
+        atom_date = (TextView)findViewById(R.id.atom_date);
         atom_temp = (TextView)findViewById(R.id.atom_temp);
-        progressBar = (ProgressBar)findViewById(R.id.progressbar);
+        atom_weather = (TextView)findViewById(R.id.atom_weather);
+
     }
 
     @Override
@@ -103,9 +137,8 @@ public class MainActivity extends Activity {
         builder.setPositiveButton("Confirm",new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                String cur_city = editText.getText().toString();
-                MyHandler myhandler = new MyHandler();
-                MyThread myThread = new MyThread(myhandler,MainActivity.this);
+                cur_city = editText.getText().toString();
+                myThread = new MyThread(myHandler,MainActivity.this);
                 myThread.setMycity(cur_city);
                 myThread.run();
                 dialog.dismiss();
